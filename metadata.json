@@ -1,0 +1,5 @@
+{
+  "name": "QA-Resource-Planning",
+  "description": "A comprehensive resource planning dashboard for managers to track allocation, manage team availability, and analyze workload distribution using Gemini AI.",
+  "requestFramePermissions": []
+}
