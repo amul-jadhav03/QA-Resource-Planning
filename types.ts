@@ -1,6 +1,7 @@
 export type Role = 'Developer' | 'Designer' | 'Manager' | 'QA' | 'Product';
 export type Priority = 'Low' | 'Medium' | 'High';
 export type UserRole = 'Admin' | 'Viewer';
+export type ResourceStatus = 'Active' | 'Inactive';
 
 export interface User {
   id: string;
@@ -28,6 +29,8 @@ export interface Resource {
   maxCapacity: number; // Weekly capacity (e.g., 40)
   tasks: Task[];
   email: string;
+  billable: boolean;
+  status: ResourceStatus;
 }
 
 export interface Project {

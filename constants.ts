@@ -18,6 +18,8 @@ export const INITIAL_RESOURCES: Resource[] = [
     email: 'sarah.c@company.com',
     avatar: 'https://picsum.photos/id/64/100/100',
     maxCapacity: 40,
+    billable: true,
+    status: 'Active',
     tasks: [
       { id: 't1', projectId: 'p1', projectName: 'E-commerce Web', name: 'Checkout Flow Regression', hours: 6, date: getToday(), completed: false, priority: 'High' },
     ],
@@ -29,6 +31,8 @@ export const INITIAL_RESOURCES: Resource[] = [
     email: 'marcus.j@company.com',
     avatar: 'https://picsum.photos/id/91/100/100',
     maxCapacity: 40,
+    billable: true,
+    status: 'Active',
     tasks: [
       { id: 't3', projectId: 'p2', projectName: 'Mobile App v2.0', name: 'Login Smoke Test', hours: 4, date: getToday(), completed: false, priority: 'High' },
       { id: 't4', projectId: 'p2', projectName: 'Mobile App v2.0', name: 'UI Glitch Verification', hours: 3, date: getToday(), completed: false, priority: 'Low' },
@@ -41,6 +45,8 @@ export const INITIAL_RESOURCES: Resource[] = [
     email: 'emily.d@company.com',
     avatar: 'https://picsum.photos/id/177/100/100',
     maxCapacity: 40,
+    billable: true,
+    status: 'Active',
     tasks: [
       { id: 't5', projectId: 'p4', projectName: 'Admin Dashboard', name: 'Permission Testing', hours: 8, date: getToday(), completed: false, priority: 'Medium' },
     ],
@@ -52,6 +58,8 @@ export const INITIAL_RESOURCES: Resource[] = [
     email: 'james.w@company.com',
     avatar: 'https://picsum.photos/id/203/100/100',
     maxCapacity: 40,
+    billable: false,
+    status: 'Active',
     tasks: [],
   },
 ];

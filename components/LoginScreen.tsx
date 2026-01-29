@@ -28,7 +28,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, resources }) 
               <Layout className="w-10 h-10 text-white" />
             </div>
           </div>
-          <h1 className="text-3xl font-bold mb-4">OptiResource Planner</h1>
+          <h1 className="text-3xl font-bold mb-4">QA Resource Planner</h1>
           <p className="text-indigo-100 text-lg leading-relaxed">
             Manage team allocation, track project tasks, and optimize workload distribution with AI-powered insights.
           </p>

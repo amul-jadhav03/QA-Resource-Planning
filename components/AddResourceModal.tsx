@@ -1,28 +1,30 @@
 import React, { useState } from 'react';
-import { X } from 'lucide-react';
+import { X, DollarSign } from 'lucide-react';
 import { Role } from '../types';
 
 interface AddResourceModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (name: string, role: Role, email: string) => void;
+  onAdd: (name: string, role: Role, email: string, billable: boolean) => void;
 }
 
 export const AddResourceModal: React.FC<AddResourceModalProps> = ({ isOpen, onClose, onAdd }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<Role>('Developer');
+  const [billable, setBillable] = useState(true);
 
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (name && email && role) {
-      onAdd(name, role, email);
+      onAdd(name, role, email, billable);
       // Reset
       setName('');
       setEmail('');
       setRole('Developer');
+      setBillable(true);
       onClose();
     }
   };
@@ -75,6 +77,27 @@ export const AddResourceModal: React.FC<AddResourceModalProps> = ({ isOpen, onCl
               <option value="QA">QA</option>
               <option value="Product">Product Owner</option>
             </select>
+          </div>
+
+          <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200">
+            <div className="flex items-center">
+                <div className="bg-white p-1.5 rounded-md border border-slate-200 mr-3">
+                    <DollarSign size={16} className="text-slate-500" />
+                </div>
+                <div>
+                    <span className="block text-sm font-medium text-slate-700">Billable Resource</span>
+                    <span className="block text-xs text-slate-500">Is this resource chargeable to client?</span>
+                </div>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+                <input 
+                    type="checkbox" 
+                    className="sr-only peer" 
+                    checked={billable}
+                    onChange={(e) => setBillable(e.target.checked)}
+                />
+                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+            </label>
           </div>
 
           <div className="pt-4 flex justify-end space-x-3">
