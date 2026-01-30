@@ -26,7 +26,6 @@ import {
   Activity
 } from 'lucide-react';
 import { Resource, Role, AnalysisResult, Task, Project, Priority, User, UserRole } from './types';
-import { INITIAL_RESOURCES, MOCK_PROJECTS } from './constants';
 import { MetricCard } from './components/MetricCard';
 import { ResourceGrid } from './components/ResourceGrid';
 import { AddResourceModal } from './components/AddResourceModal';
@@ -36,48 +35,22 @@ import { TaskHistoryModal } from './components/TaskHistoryModal';
 import { WorkloadChart } from './components/WorkloadChart';
 import { LoginScreen } from './components/LoginScreen';
 import { analyzeResources } from './services/geminiService';
+import { StorageService } from './services/storageService';
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
-  // Initialize resources from LocalStorage if available, otherwise use default
-  const [resources, setResources] = useState<Resource[]>(() => {
-    try {
-      const savedResources = localStorage.getItem('optiresource_data');
-      return savedResources ? JSON.parse(savedResources) : INITIAL_RESOURCES;
-    } catch (error) {
-      console.error('Failed to load resources from storage:', error);
-      return INITIAL_RESOURCES;
-    }
-  });
-
-  // Initialize projects from LocalStorage
-  const [projects, setProjects] = useState<Project[]>(() => {
-    try {
-      const savedProjects = localStorage.getItem('optiresource_projects');
-      return savedProjects ? JSON.parse(savedProjects) : MOCK_PROJECTS;
-    } catch (error) {
-      console.error('Failed to load projects from storage:', error);
-      return MOCK_PROJECTS;
-    }
-  });
+  // Initialize state using the StorageService
+  const [resources, setResources] = useState<Resource[]>(() => StorageService.getResources());
+  const [projects, setProjects] = useState<Project[]>(() => StorageService.getProjects());
   
-  // Persist resources to LocalStorage whenever they change
+  // Persist changes whenever state updates
   useEffect(() => {
-    try {
-      localStorage.setItem('optiresource_data', JSON.stringify(resources));
-    } catch (error) {
-      console.error('Failed to save resources to storage:', error);
-    }
+    StorageService.saveResources(resources);
   }, [resources]);
 
-  // Persist projects to LocalStorage whenever they change
   useEffect(() => {
-    try {
-      localStorage.setItem('optiresource_projects', JSON.stringify(projects));
-    } catch (error) {
-      console.error('Failed to save projects to storage:', error);
-    }
+    StorageService.saveProjects(projects);
   }, [projects]);
   
   const [isResourceModalOpen, setIsResourceModalOpen] = useState(false);
@@ -139,7 +112,6 @@ const App: React.FC = () => {
     const d1 = new Date(start);
     const d2 = new Date(end);
     const oneDay = 24 * 60 * 60 * 1000;
-    // Difference + 1 for inclusive range
     return Math.round(Math.abs((d2.getTime() - d1.getTime()) / oneDay)) + 1;
   };
 
@@ -159,7 +131,6 @@ const App: React.FC = () => {
 
     if (preset === 'thisWeek') {
         const day = now.getDay();
-        // Assuming Monday start. day 0 is Sunday.
         const diff = now.getDate() - day + (day === 0 ? -6 : 1);
         start.setDate(diff);
         end = new Date(start);
@@ -183,12 +154,10 @@ const App: React.FC = () => {
     setIsDateMenuOpen(false);
   };
 
-  // Filter resources based on current user role (Viewers only see themselves)
   const visibleResources = currentUser?.role === 'Viewer'
     ? resources.filter(r => r.id === currentUser.id)
     : resources;
 
-  // Filter visible resources based on project
   const projectFilteredResources = visibleResources.filter(resource => {
     if (selectedProjectIds.length === 0) return true;
     return resource.tasks.some(task => 
@@ -196,7 +165,6 @@ const App: React.FC = () => {
     );
   });
 
-  // Range View Logic - Filter tasks within date range AND priority
   const rangeResources = projectFilteredResources
     .filter(r => showInactive || r.status === 'Active')
     .map(resource => ({
@@ -208,16 +176,13 @@ const App: React.FC = () => {
     })
   }));
 
-  // Derived Metrics (Calculated from visible resources only)
-  // Only count Active resources for capacity/utilization metrics to avoid skewing data
   const activeResourcesList = visibleResources.filter(r => r.status === 'Active');
   const totalResources = visibleResources.length; 
   const totalActiveResources = activeResourcesList.length;
 
-  const dailyCapacityPerPerson = 8; // Standard 8h day assumption
+  const dailyCapacityPerPerson = 8;
   const totalCapacityInRange = totalActiveResources * dailyCapacityPerPerson * daysInRange;
   
-  // Calculate allocation only for Active resources
   const activeRangeResources = rangeResources.filter(r => r.status === 'Active');
   
   const allocatedHoursInRange = activeRangeResources.reduce((acc, r) => acc + r.tasks
@@ -230,9 +195,8 @@ const App: React.FC = () => {
 
   const utilizationRate = totalCapacityInRange > 0 ? Math.round((allocatedHoursInRange / totalCapacityInRange) * 100) : 0;
   
-  // Thresholds scale with days in range
-  const underutilizedThreshold = 4 * daysInRange; // < 4h per day average
-  const overloadedThreshold = 7 * daysInRange; // > 7h per day average
+  const underutilizedThreshold = 4 * daysInRange;
+  const overloadedThreshold = 7 * daysInRange;
 
   const underutilizedCount = activeRangeResources.filter(r => {
     const hours = r.tasks.filter(t => !t.completed).reduce((sum, t) => sum + t.hours, 0);
@@ -246,16 +210,12 @@ const App: React.FC = () => {
   
   const balancedCount = totalActiveResources - underutilizedCount - overloadedCount;
 
-  // Team Metrics
   const billableCount = visibleResources.filter(r => r.billable && r.status === 'Active').length;
   const nonBillableCount = visibleResources.filter(r => !r.billable && r.status === 'Active').length;
   const inactiveCount = visibleResources.filter(r => r.status === 'Inactive').length;
 
-  // Sort Logic
   const sortedResources = [...rangeResources].sort((a, b) => {
-    // Show active first
     if (a.status !== b.status) return a.status === 'Active' ? -1 : 1;
-    
     if (sortBy === 'name') {
       return a.name.localeCompare(b.name);
     } else {
@@ -275,7 +235,8 @@ const App: React.FC = () => {
       billable,
       status: 'Active'
     };
-    setResources([...resources, newResource]);
+    // Use functional update to ensure we have the latest state
+    setResources(prev => [...prev, newResource]);
   };
 
   const handleToggleResourceStatus = (id: string) => {
@@ -295,7 +256,7 @@ const App: React.FC = () => {
 
   const handleOpenTaskModal = (resourceId: string) => {
     const resource = resources.find(r => r.id === resourceId);
-    if (resource?.status === 'Inactive') return; // Prevent adding tasks to inactive resources
+    if (resource?.status === 'Inactive') return;
     setSelectedResourceId(resourceId);
     setIsTaskModalOpen(true);
   };
@@ -345,7 +306,6 @@ const App: React.FC = () => {
     }));
   };
 
-  // Bulk completion handler
   const handleBulkCompleteTasks = (taskIds: string[]) => {
     setResources(prevResources => prevResources.map(resource => ({
       ...resource,
@@ -372,74 +332,73 @@ const App: React.FC = () => {
     );
   };
 
-  // CSV Import Logic
   const handleImportCSV = (csvText: string) => {
     const lines = csvText.split('\n').filter(line => line.trim() !== '');
-    // Skip header if it contains "Resource"
     const startIdx = lines[0].toLowerCase().includes('resource') ? 1 : 0;
     
-    const newResources = [...resources];
-    const newProjects = [...projects];
+    // Functional update to ensure safe state mutation
+    setResources(currentResources => {
+        const newResources = [...currentResources];
+        const newProjects = [...projects];
 
-    for (let i = startIdx; i < lines.length; i++) {
-        const cols = lines[i].split(',').map(c => c.trim());
-        if (cols.length < 6) continue;
+        for (let i = startIdx; i < lines.length; i++) {
+            const cols = lines[i].split(',').map(c => c.trim());
+            if (cols.length < 6) continue;
 
-        const [rName, rRole, pName, tName, tDate, tHours, tPriority] = cols;
+            const [rName, rRole, pName, tName, tDate, tHours, tPriority] = cols;
 
-        let project = newProjects.find(p => p.name.toLowerCase() === pName.toLowerCase());
-        if (!project) {
-            project = { id: `p-${Date.now()}-${i}`, name: pName, status: 'Active' };
-            newProjects.push(project);
-        }
+            let project = newProjects.find(p => p.name.toLowerCase() === pName.toLowerCase());
+            if (!project) {
+                project = { id: `p-${Date.now()}-${i}`, name: pName, status: 'Active' };
+                newProjects.push(project);
+            }
 
-        let resourceIdx = newResources.findIndex(r => r.name.toLowerCase() === rName.toLowerCase());
-        if (resourceIdx === -1) {
-            const newRes: Resource = {
-                id: `r-${Date.now()}-${i}`,
-                name: rName,
-                role: rRole as Role || 'QA',
-                email: `${rName.toLowerCase().replace(' ', '.')}@company.com`,
-                avatar: `https://picsum.photos/seed/${rName}/100/100`,
-                maxCapacity: 40,
-                tasks: [],
-                billable: true,
-                status: 'Active'
+            let resourceIdx = newResources.findIndex(r => r.name.toLowerCase() === rName.toLowerCase());
+            if (resourceIdx === -1) {
+                const newRes: Resource = {
+                    id: `r-${Date.now()}-${i}`,
+                    name: rName,
+                    role: rRole as Role || 'QA',
+                    email: `${rName.toLowerCase().replace(' ', '.')}@company.com`,
+                    avatar: `https://picsum.photos/seed/${rName}/100/100`,
+                    maxCapacity: 40,
+                    tasks: [],
+                    billable: true,
+                    status: 'Active'
+                };
+                newResources.push(newRes);
+                resourceIdx = newResources.length - 1;
+            }
+
+            let priority: Priority = 'Medium';
+            if (tPriority) {
+              const p = tPriority.trim().toLowerCase();
+              if (p === 'high') priority = 'High';
+              else if (p === 'low') priority = 'Low';
+            }
+
+            const newTask: Task = {
+                id: `t-${Date.now()}-${i}`,
+                projectId: project.id,
+                projectName: project.name,
+                name: tName,
+                date: tDate,
+                hours: parseFloat(tHours) || 0,
+                completed: false,
+                priority
             };
-            newResources.push(newRes);
-            resourceIdx = newResources.length - 1;
+
+            const exists = newResources[resourceIdx].tasks.some(t => 
+                t.name === newTask.name && t.date === newTask.date
+            );
+
+            if (!exists) {
+                newResources[resourceIdx].tasks.push(newTask);
+            }
         }
-
-        // Simple validation/default for priority from CSV
-        let priority: Priority = 'Medium';
-        if (tPriority) {
-          const p = tPriority.trim().toLowerCase();
-          if (p === 'high') priority = 'High';
-          else if (p === 'low') priority = 'Low';
-        }
-
-        const newTask: Task = {
-            id: `t-${Date.now()}-${i}`,
-            projectId: project.id,
-            projectName: project.name,
-            name: tName,
-            date: tDate,
-            hours: parseFloat(tHours) || 0,
-            completed: false,
-            priority
-        };
-
-        const exists = newResources[resourceIdx].tasks.some(t => 
-            t.name === newTask.name && t.date === newTask.date
-        );
-
-        if (!exists) {
-            newResources[resourceIdx].tasks.push(newTask);
-        }
-    }
-
-    setProjects(newProjects);
-    setResources(newResources);
+        setProjects(newProjects); // Side effect inside state updater, but Projects has its own state
+        return newResources;
+    });
   };
 
   const runAnalysis = async () => {
